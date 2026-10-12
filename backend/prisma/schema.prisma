@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password_hash String
+  created_at    DateTime @default(now())
+  files         File[]   @relation("UserFiles")
+}
+
+model File {
+  id                  String      @id @default(uuid())
+  user_id             String
+  filename            String
+  encrypted_file_path String
+  iv                  String      // Initialization vector for AES-GCM decryption
+  file_hash           String      // SHA-256 hash of the encrypted file for integrity verification
+  file_size           Int         @default(0)  // Size in bytes
+  chunk_count         Int         @default(1)  // Number of chunks used during upload
+  created_at          DateTime    @default(now())
+  user                User        @relation(fields: [user_id], references: [id], name: "UserFiles")
+  shareLinks          ShareLink[] @relation("FileShareLinks")
+}
+
+model ShareLink {
+  id             String   @id @default(uuid())
+  token          String   @unique
+  file_id        String
+  password_hash  String?  // Optional bcrypt-hashed password for protected links
+  expiry_time    DateTime
+  download_limit Int
+  download_count Int      @default(0)
+  created_at     DateTime @default(now())
+  file           File     @relation(fields: [file_id], references: [id], name: "FileShareLinks")
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  event      String   // upload, download, auth_fail, access_denied, link_created
+  user_id    String?
+  file_id    String?
+  token      String?
+  ip         String?
+  detail     String?
+  created_at DateTime @default(now())
+}
